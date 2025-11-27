@@ -1,0 +1,152 @@
+:root {
+    --primary-gold: #ffd700;
+    --casino-red: #e60000;
+    --neon-purple: #bc13fe;
+    --bg-dark: #1a0b2e;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none; /* 禁止選取文字，像 App */
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    color: white;
+    font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
+    overflow: hidden; /* 禁止滾動 */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* 頂部 Header */
+.app-header {
+    height: 60px;
+    background: linear-gradient(180deg, #330033, #110011);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 2px solid var(--neon-purple);
+    box-shadow: 0 0 15px var(--neon-purple);
+    z-index: 10;
+}
+
+.jackpot-display {
+    font-size: 24px;
+    color: var(--primary-gold);
+    text-shadow: 0 0 10px var(--primary-gold);
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* 遊戲區域 */
+#game-container {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    background: radial-gradient(circle at center, #2a0e3d 0%, #000000 100%);
+}
+
+/* 老虎機區域 */
+.slot-machine-overlay {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid var(--primary-gold);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    pointer-events: none; /* 讓點擊穿透到遊戲層 */
+    z-index: 5;
+}
+
+.slot-window {
+    display: flex;
+    justify-content: space-between;
+    background: #000;
+    padding: 5px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    font-size: 28px;
+}
+
+#slot-message {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px black;
+}
+
+/* 底部控制區 */
+.controls-area {
+    height: 120px;
+    background: #111;
+    border-top: 4px solid var(--casino-red);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 20px; /* 適配 iPhone Home Bar */
+    z-index: 20;
+}
+
+.status-bar {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #ccc;
+}
+
+#score {
+    color: var(--primary-gold);
+    font-size: 22px;
+}
+
+/* 大按鈕設計 */
+.casino-btn {
+    position: relative;
+    width: 80%;
+    max-width: 300px;
+    height: 60px;
+    background: linear-gradient(180deg, #ff4d4d 0%, #990000 100%);
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-size: 24px;
+    font-weight: 900;
+    box-shadow: 0 5px 0 #550000, 0 10px 10px rgba(0,0,0,0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.casino-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 0 0 #550000, 0 5px 5px rgba(0,0,0,0.5);
+}
+
+/* 按鈕光澤動畫 */
+.shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+    transform: skewX(-20deg);
+    animation: shine-anim 3s infinite;
+}
+
+@keyframes shine-anim {
+    0% { left: -100%; }
+    20% { left: 200%; }
+    100% { left: 200%; }
+}
