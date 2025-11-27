@@ -1,10 +1,10 @@
 {
-  "name": "Super Coin Pusher",
+  "name": "Royal Coin Pusher",
   "short_name": "CoinPusher",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1a0b2e",
-  "theme_color": "#330033",
+  "background_color": "#1a0000",
+  "theme_color": "#1a0000",
   "orientation": "portrait",
   "icons": [
     {
