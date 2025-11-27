@@ -1,0 +1,21 @@
+{
+  "name": "Super Coin Pusher",
+  "short_name": "CoinPusher",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a0b2e",
+  "theme_color": "#330033",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2454/2454269.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2454/2454269.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
