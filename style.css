@@ -1,152 +1,198 @@
 :root {
-    --primary-gold: #ffd700;
-    --casino-red: #e60000;
-    --neon-purple: #bc13fe;
-    --bg-dark: #1a0b2e;
+    --gold-gradient: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
+    --bg-gradient: radial-gradient(circle, #4a0e0e 0%, #1a0000 100%);
+    --felt-green: #005522;
 }
 
 * {
     box-sizing: border-box;
-    user-select: none; /* 禁止選取文字，像 App */
+    user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
 body {
     margin: 0;
-    padding: 0;
-    background-color: var(--bg-dark);
-    color: white;
-    font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
-    overflow: hidden; /* 禁止滾動 */
+    overflow: hidden;
+    background: #000;
+    font-family: 'Arial Black', sans-serif;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    height: 100vh;
 }
 
-/* 頂部 Header */
-.app-header {
-    height: 60px;
-    background: linear-gradient(180deg, #330033, #110011);
+/* 背景布簾特效 */
+.bg-curtains {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: 
+        repeating-linear-gradient(
+            90deg,
+            #3e0000,
+            #3e0000 20px,
+            #500000 40px,
+            #200000 60px
+        );
+    z-index: -2;
+    box-shadow: inset 0 0 100px #000;
+}
+
+/* 頂部老虎機 UI */
+.slot-machine-container {
+    height: 35%;
+    position: relative;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    border-bottom: 2px solid var(--neon-purple);
-    box-shadow: 0 0 15px var(--neon-purple);
+    justify-content: center;
+    padding-top: 20px;
     z-index: 10;
 }
 
-.jackpot-display {
-    font-size: 24px;
-    color: var(--primary-gold);
-    text-shadow: 0 0 10px var(--primary-gold);
-    font-weight: bold;
-    letter-spacing: 2px;
+.slot-header {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
-/* 遊戲區域 */
-#game-container {
+.jackpot-title {
+    color: #ffd700;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px black;
+}
+
+.jackpot-score {
+    color: #fff;
+    font-size: 28px;
+    background: #000;
+    padding: 5px 20px;
+    border-radius: 20px;
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 10px #ffd700;
+}
+
+.slot-frame {
+    width: 280px;
+    height: 120px;
+    background: linear-gradient(45deg, #b8860b, #fffacd, #b8860b);
+    padding: 8px;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+    position: relative;
+}
+
+.reels-container {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+.reel {
+    font-size: 40px;
+    width: 33%;
+    text-align: center;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+}
+
+.win-overlay {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 40px;
+    color: #ff0055;
+    text-shadow: 2px 2px 0 #fff, 0 0 20px #ff0055;
+    font-weight: 900;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+/* 遊戲畫布 (綠色絨布區) */
+#game-area {
     flex: 1;
     position: relative;
     width: 100%;
-    background: radial-gradient(circle at center, #2a0e3d 0%, #000000 100%);
-}
-
-/* 老虎機區域 */
-.slot-machine-overlay {
-    position: absolute;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 200px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid var(--primary-gold);
-    border-radius: 10px;
-    padding: 10px;
-    text-align: center;
-    pointer-events: none; /* 讓點擊穿透到遊戲層 */
+    /* 製作梯形透視感的綠色檯面 */
+    background: radial-gradient(ellipse at center bottom, #008844 0%, #004411 80%);
+    border-top: 5px solid #b8860b;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
     z-index: 5;
 }
 
-.slot-window {
-    display: flex;
-    justify-content: space-between;
-    background: #000;
-    padding: 5px;
-    border-radius: 5px;
-    margin-bottom: 5px;
-    font-size: 28px;
-}
-
-#slot-message {
-    font-size: 14px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 0 1px 2px black;
-}
-
 /* 底部控制區 */
-.controls-area {
-    height: 120px;
-    background: #111;
-    border-top: 4px solid var(--casino-red);
+.controls {
+    height: 140px;
+    background: linear-gradient(180deg, #2a0000, #000);
+    border-top: 4px solid #ffd700;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-bottom: 20px; /* 適配 iPhone Home Bar */
+    position: relative;
     z-index: 20;
 }
 
-.status-bar {
-    width: 100%;
-    text-align: center;
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #ccc;
-}
-
-#score {
-    color: var(--primary-gold);
-    font-size: 22px;
-}
-
-/* 大按鈕設計 */
-.casino-btn {
-    position: relative;
-    width: 80%;
-    max-width: 300px;
-    height: 60px;
-    background: linear-gradient(180deg, #ff4d4d 0%, #990000 100%);
-    border: none;
-    border-radius: 30px;
-    color: white;
-    font-size: 24px;
-    font-weight: 900;
-    box-shadow: 0 5px 0 #550000, 0 10px 10px rgba(0,0,0,0.5);
-    transition: transform 0.1s, box-shadow 0.1s;
-    cursor: pointer;
-    overflow: hidden;
-}
-
-.casino-btn:active {
-    transform: translateY(5px);
-    box-shadow: 0 0 0 #550000, 0 5px 5px rgba(0,0,0,0.5);
-}
-
-/* 按鈕光澤動畫 */
-.shine {
+.coin-balance {
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
-    transform: skewX(-20deg);
-    animation: shine-anim 3s infinite;
+    top: -20px;
+    background: #000;
+    color: #ffd700;
+    padding: 5px 20px;
+    border-radius: 20px;
+    border: 2px solid #ffd700;
+    font-size: 20px;
 }
 
-@keyframes shine-anim {
-    0% { left: -100%; }
-    20% { left: 200%; }
-    100% { left: 200%; }
+/* 模仿截圖中的圓形按鈕 */
+.spin-button {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: none;
+    background: radial-gradient(circle, #ffeb3b, #fbc02d);
+    box-shadow: 0 8px 0 #f57f17, 0 15px 20px rgba(0,0,0,0.5);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.spin-button .inner-ring {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(180deg, #fbc02d, #f9a825);
+}
+
+.spin-button span {
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.spin-button:active, .spin-button.pressed {
+    transform: translateY(5px);
+    box-shadow: 0 3px 0 #f57f17, 0 5px 10px rgba(0,0,0,0.5);
+}
+
+@keyframes pop-in {
+    0% { transform: translate(-50%, -50%) scale(0); }
+    80% { transform: translate(-50%, -50%) scale(1.2); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.pop-in {
+    animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
