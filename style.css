@@ -1,168 +1,140 @@
 :root {
     --gold: #ffd700;
-    --dark-bg: #1a001a;
-    --neon-red: #ff0055;
+    --purple-dark: #2e002e;
+    --purple-light: #580058;
 }
 
 body {
     margin: 0;
-    padding: 0;
-    background-color: var(--dark-bg);
-    font-family: 'Arial', sans-serif;
     overflow: hidden;
+    background: #000;
+    font-family: 'Arial Black', sans-serif;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* 背景圖案 */
-.bg-pattern {
+/* 1. 全局背景：深紫賭場風 */
+.casino-bg {
     position: absolute;
     width: 100%; height: 100%;
-    background-image: radial-gradient(#330033 10%, transparent 10%);
-    background-size: 30px 30px;
-    opacity: 0.3;
+    background: radial-gradient(circle at center, var(--purple-light), var(--purple-dark), #000);
     z-index: -1;
 }
 
-/* 頂部 Jackpot */
-.header-ui {
-    position: absolute;
-    top: 10px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    z-index: 10;
-}
-
-.jackpot-box {
-    background: linear-gradient(90deg, #000, #330000, #000);
-    border: 2px solid var(--gold);
-    border-radius: 10px;
-    padding: 5px 20px;
-    text-align: center;
-    box-shadow: 0 0 15px var(--gold);
-}
-
-.jackpot-box .label {
-    color: #fff;
-    font-size: 12px;
-    letter-spacing: 2px;
-}
-
-.jackpot-box .value {
-    color: var(--gold);
-    font-size: 24px;
-    font-weight: bold;
-}
-
-/* 老虎機 UI */
-.slot-display {
-    position: absolute;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 220px;
-    background: rgba(0,0,0,0.8);
-    border-radius: 15px;
-    border: 2px solid #bc13fe;
-    padding: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;
-    z-index: 5;
-}
-
-.reel {
-    width: 60px;
-    height: 60px;
-    background: #fff;
-    border-radius: 5px;
-    font-size: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-}
-
-#win-text {
-    width: 100%;
-    text-align: center;
-    color: #fff;
-    font-weight: bold;
-    margin-top: 5px;
-    text-shadow: 0 0 5px #bc13fe;
-}
-
-/* 畫布 */
-#game-container {
+/* 2. 老虎機 UI */
+.slot-machine-ui {
     position: absolute;
     top: 0;
-    left: 0;
     width: 100%;
-    height: 100%;
-}
-
-/* 底部按鈕區 */
-.controls-area {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 140px;
-    background: linear-gradient(to top, #000, #220022);
+    height: 25%;
+    background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(to bottom, #4a0e4e, #000);
+    border-bottom: 4px solid var(--gold);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-top: 3px solid var(--neon-red);
-    z-index: 20;
-    padding-bottom: 20px; /* iOS Home Bar */
+    z-index: 10;
 }
 
-.score-board {
+.jackpot-display {
+    text-align: center;
+    margin-bottom: 5px;
+}
+.jackpot-display span {
+    color: #fff; font-size: 10px; letter-spacing: 2px;
+}
+#jackpot-val {
+    color: var(--gold); font-size: 24px; text-shadow: 0 0 10px var(--gold);
+}
+
+.slot-reels {
+    position: relative;
+    width: 240px;
+}
+.reel-window {
+    display: flex;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: inset 0 0 10px #000;
+}
+.reel {
+    width: 70px; height: 60px;
+    font-size: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(to bottom, #eee, #fff, #eee);
+    border-radius: 5px;
+}
+#win-msg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: #ff0055;
+    text-shadow: 2px 2px 0 #fff;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+
+/* 3. 遊戲區 */
+#game-container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 5;
+}
+
+/* 4. 底部控制欄 */
+.controls-bar {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(to top, #111, #330000);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-top: 2px solid var(--gold);
+    z-index: 20;
+    padding-bottom: 20px; /* iOS Safe Area */
+}
+
+.coin-info {
+    display: flex;
+    align-items: center;
     color: var(--gold);
     font-size: 20px;
     margin-bottom: 10px;
-    text-shadow: 0 0 5px var(--gold);
+    background: rgba(0,0,0,0.5);
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: 1px solid var(--gold);
 }
 
-.big-red-btn {
-    position: relative;
-    width: 200px;
-    height: 60px;
-    background: linear-gradient(180deg, #ff4d4d, #990000);
+.poker-chip-btn {
+    width: 80px; height: 80px;
+    border-radius: 50%;
     border: none;
-    border-radius: 30px;
-    box-shadow: 0 5px 0 #550000, 0 10px 20px rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    background: repeating-conic-gradient(#d32f2f 0deg 30deg, #fff 30deg 60deg);
+    padding: 5px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     cursor: pointer;
+    transition: transform 0.1s;
 }
 
-.big-red-btn:active {
-    transform: translateY(4px);
-    box-shadow: 0 1px 0 #550000;
-}
+.poker-chip-btn:active { transform: scale(0.9); }
+.poker-chip-btn.clicked { transform: scale(0.95); }
 
-.btn-text {
-    color: white;
-    font-size: 22px;
-    font-weight: 900;
-    z-index: 2;
-}
-
-.btn-shine {
-    position: absolute;
-    top: 0; left: -100%;
-    width: 50%; height: 100%;
-    background: linear-gradient(skewX(-20deg), transparent, rgba(255,255,255,0.4), transparent);
-    animation: shine 3s infinite;
-}
-
-@keyframes shine {
-    0% { left: -100%; }
-    20% { left: 200%; }
-    100% { left: 200%; }
+.chip-inner {
+    width: 100%; height: 100%;
+    background: #d32f2f;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 4px dashed #fff;
+    color: #fff;
+    font-weight: bold;
 }
