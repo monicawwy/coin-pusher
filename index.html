@@ -3,327 +3,383 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Casino Coin Pusher</title>
+    <title>Royal Coin Pusher</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <!-- 引入 Matter.js 物理引擎 -->
+    <!-- 引入 Matter.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
 
-    <!-- 頂部導航/狀態列 -->
-    <header class="app-header">
-        <div class="jackpot-display">
-            JACKPOT: <span id="jackpot-amount">10,000</span>
-        </div>
-    </header>
+    <!-- 背景裝飾 (紅布簾與燈光) -->
+    <div class="bg-curtains"></div>
+    <div class="bg-lights"></div>
 
-    <!-- 遊戲主畫布 -->
-    <div id="game-container"></div>
-
-    <!-- 老虎機 UI -->
-    <div class="slot-machine-overlay">
-        <div class="slot-window">
-            <div class="reel" id="reel1">🍒</div>
-            <div class="reel" id="reel2">7️⃣</div>
-            <div class="reel" id="reel3">💎</div>
+    <!-- 頂部老虎機 UI -->
+    <div class="slot-machine-container">
+        <div class="slot-header">
+            <div class="jackpot-title">GRAND JACKPOT</div>
+            <div class="jackpot-score">$ <span id="total-money">10,000</span></div>
         </div>
-        <div id="slot-message">PUSH COIN!</div>
+        <div class="slot-frame">
+            <div class="reels-container">
+                <div class="reel" id="reel1">👑</div>
+                <div class="reel" id="reel2">💎</div>
+                <div class="reel" id="reel3">7️⃣</div>
+            </div>
+            <div class="win-overlay" id="win-message">WIN!</div>
+        </div>
+    </div>
+
+    <!-- 遊戲物理畫布 -->
+    <div id="game-area">
+        <!-- 畫布會由 JS 自動插入這裡 -->
     </div>
 
     <!-- 底部控制區 -->
-    <div class="controls-area">
-        <div class="status-bar">
-            <div>Coins Won: <span id="score">0</span></div>
+    <div class="controls">
+        <div class="coin-balance">
+            <div class="coin-icon"></div>
+            <span id="score">0</span>
         </div>
-        <button id="drop-btn" class="casino-btn">
-            <span>DROP COIN</span>
-            <div class="shine"></div>
+        <button id="insert-btn" class="spin-button">
+            <div class="inner-ring">
+                <span>DROP</span>
+            </div>
         </button>
     </div>
 
     <script>
-        // --- 音效系統 (使用 Web Audio API 生成簡單音效，無需外部檔案) ---
+        // --- 音效系統 ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playSound(type) {
+        function playTone(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            if (type === 'drop') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            if (type === 'coin') {
+                // 金幣清脆聲
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'push') {
+                // 機械聲
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.1);
             } else if (type === 'win') {
+                // 中獎聲
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.5);
+                osc.stop(audioCtx.currentTime + 1);
             }
         }
 
-        // --- 物理引擎設定 ---
+        // --- Matter.js 物理引擎 ---
         const Engine = Matter.Engine,
               Render = Matter.Render,
               Runner = Matter.Runner,
               Bodies = Matter.Bodies,
               Composite = Matter.Composite,
               Events = Matter.Events,
-              Body = Matter.Body;
+              Body = Matter.Body,
+              Vector = Matter.Vector;
 
+        // 1. 設定引擎
         const engine = Engine.create();
         const world = engine.world;
+        
+        // 重點：將重力設為 0 (因為我們是俯視角，金幣是平躺的)
+        // 我們只在金幣掉出邊緣時模擬重力
+        engine.world.gravity.y = 0; 
+        engine.world.gravity.x = 0;
 
-        // 手機適配尺寸
+        // 2. 尺寸設定
         const width = window.innerWidth;
-        const height = window.innerHeight - 150; // 留出底部按鈕空間
-
+        const height = window.innerHeight * 0.65; // 遊戲區域佔螢幕 65%
+        
+        // 3. 建立渲染器 (自定義，為了畫出橢圓透視感)
+        const canvasContainer = document.getElementById('game-area');
         const render = Render.create({
-            element: document.getElementById('game-container'),
+            element: canvasContainer,
             engine: engine,
             options: {
                 width: width,
                 height: height,
                 wireframes: false,
-                background: '#220033', // 深紫賭場色
-                pixelRatio: window.devicePixelRatio // 高清渲染
+                background: 'transparent', // 透明背景，讓 CSS 綠色絨布透出來
+                pixelRatio: window.devicePixelRatio
             }
         });
 
         // --- 遊戲物件 ---
 
-        // 1. 邊界
-        const walls = [
-            Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true, label: 'floor', render: { visible: false } }), // 底部 (掉落區)
-            Bodies.rectangle(-10, height / 2, 20, height, { isStatic: true, render: { fillStyle: '#444' } }), // 左牆
-            Bodies.rectangle(width + 10, height / 2, 20, height, { isStatic: true, render: { fillStyle: '#444' } }) // 右牆
-        ];
-        Composite.add(world, walls);
+        // 牆壁 (不可見，防止金幣左右跑出去)
+        const wallLeft = Bodies.rectangle(0, height/2, 20, height, { isStatic: true, render: { visible: false } });
+        const wallRight = Bodies.rectangle(width, height/2, 20, height, { isStatic: true, render: { visible: false } });
+        Composite.add(world, [wallLeft, wallRight]);
 
-        // 2. 推板 (雙層設計)
-        // 上層推板 (較窄，移動)
-        const pusherUpper = Bodies.rectangle(width / 2, height * 0.3, width * 0.6, 40, {
-            isStatic: true,
-            render: { fillStyle: '#d4af37' } // 金色
-        });
-        // 下層推板 (較寬，移動)
-        const pusherLower = Bodies.rectangle(width / 2, height * 0.55, width * 0.8, 40, {
-            isStatic: true,
-            render: { fillStyle: '#c0c0c0' } // 銀色
-        });
-        
-        // 固定平台 (承接上層掉下來的銀仔)
-        const platformUpper = Bodies.rectangle(width / 2, height * 0.35, width * 0.6, 10, { 
-            isStatic: true, 
-            render: { fillStyle: '#550055' } 
-        });
-        const platformLower = Bodies.rectangle(width / 2, height * 0.6, width * 0.8, 10, { 
-            isStatic: true, 
-            render: { fillStyle: '#550055' } 
-        });
-
-        Composite.add(world, [pusherUpper, pusherLower, platformUpper, platformLower]);
-
-        // 3. 障礙點點 (Plinko 風格)
-        const pegs = [];
-        for (let i = 0; i < 5; i++) {
-            for (let j = 0; j < 4; j++) {
-                let x = (width / 2 - 60) + j * 40;
-                let y = 50 + i * 30;
-                if (i % 2 === 0) x += 20; // 交錯排列
-                const peg = Bodies.circle(x, y, 4, {
-                    isStatic: true,
-                    render: { fillStyle: '#ff00ff' },
-                    restitution: 0.8
-                });
-                pegs.push(peg);
+        // 推板 (Pusher) - 這是遊戲的核心
+        // 我們建立一個巨大的方塊在上方，它會上下移動 (模擬前後推動)
+        const pusherWidth = width * 0.8;
+        const pusherHeight = 150;
+        const pusherYStart = 100;
+        const pusher = Bodies.rectangle(width / 2, pusherYStart, pusherWidth, pusherHeight, {
+            isStatic: true, // 它是靜態的(不受力)，但我們會手動移動它
+            label: 'pusher',
+            render: {
+                fillStyle: 'url(#pusherGradient)', // 暫時用顏色，稍後用 Canvas 繪圖覆蓋
+                visible: false // 我們會自己畫推板
             }
-        }
-        Composite.add(world, pegs);
+        });
+        Composite.add(world, pusher);
 
-        // --- 邏輯與動畫 ---
+        // 障礙物 (兩側的楔形，讓金幣往中間擠)
+        const wedgeLeft = Bodies.polygon(0, height - 100, 3, 80, { isStatic: true, angle: 0.5, render: { fillStyle: '#330000' }});
+        const wedgeRight = Bodies.polygon(width, height - 100, 3, 80, { isStatic: true, angle: -0.5, render: { fillStyle: '#330000' }});
+        // 隱藏它們，只用物理碰撞
+        wedgeLeft.render.visible = false;
+        wedgeRight.render.visible = false;
+        Composite.add(world, [wedgeLeft, wedgeRight]);
+
+
+        // --- 邏輯迴圈 ---
         
-        // 雨刷邏輯 (Wiper)
-        let wiperX = width / 2;
-        let wiperSpeed = 3;
-        const wiperRange = width * 0.4; // 雨刷移動範圍
-
-        // 推板移動邏輯
         let time = 0;
+        const pusherRange = 60; // 推動距離
+        const pusherSpeed = 0.03;
+
         Events.on(engine, 'beforeUpdate', function(event) {
-            time += 0.03;
-            
-            // 雨刷移動計算
-            wiperX = (width / 2) + Math.sin(time * 0.5) * wiperRange;
+            // 1. 移動推板 (Sine Wave)
+            time += pusherSpeed;
+            const newY = pusherYStart + Math.sin(time) * pusherRange;
+            Body.setPosition(pusher, { x: width/2, y: newY });
 
-            // 推板前後移動 (正弦波)
-            // 上層
-            const px1 = width / 2; 
-            const py1 = (height * 0.3) + Math.sin(time) * 30; 
-            Body.setPosition(pusherUpper, { x: px1, y: py1 });
-            
-            // 下層 (稍微不同步)
-            const px2 = width / 2;
-            const py2 = (height * 0.55) + Math.sin(time + 1) * 30;
-            Body.setPosition(pusherLower, { x: px2, y: py2 });
-
-            // 檢查掉落得分
-            // 這裡為了簡單，如果物體掉出畫面下方，算得分
+            // 2. 檢查金幣掉落 (Win)
+            // 畫布底部是 "邊緣"。如果金幣 Y 超過 height，就算掉下去
             const bodies = Composite.allBodies(world);
             for (let i = 0; i < bodies.length; i++) {
                 const body = bodies[i];
-                if (body.label === 'coin' && body.position.y > height + 20) {
-                    addScore(1);
-                    Composite.remove(world, body);
+                if (body.label === 'coin') {
+                    // 模擬摩擦力 (讓金幣很快停下來，不會像冰球一樣滑)
+                    Body.setVelocity(body, {
+                        x: body.velocity.x * 0.96,
+                        y: body.velocity.y * 0.96
+                    });
+
+                    // 檢查是否掉出邊界 (下方)
+                    if (body.position.y > height + 30) {
+                        addScore(1);
+                        Composite.remove(world, body);
+                    }
                 }
             }
         });
 
-        // 產生銀仔函數
-        function spawnCoin(x, y, count = 1) {
-            for(let i=0; i<count; i++) {
-                setTimeout(() => {
-                    const coin = Bodies.circle(x + (Math.random() * 10 - 5), y, 12, {
-                        label: 'coin',
-                        restitution: 0.3,
-                        friction: 0.05,
-                        render: {
-                            fillStyle: '#FFD700', // 金幣色
-                            strokeStyle: '#B8860B',
-                            lineWidth: 2
-                        }
-                    });
-                    Composite.add(world, coin);
-                }, i * 100); // 如果多個，稍微延遲
-            }
-        }
-
-        // 預先填滿銀仔
-        function initCoins() {
-            // 上層
-            for(let i=0; i<30; i++) {
-                spawnCoin(width/2 + (Math.random()*100 - 50), height * 0.25);
-            }
-            // 下層
-            for(let i=0; i<40; i++) {
-                spawnCoin(width/2 + (Math.random()*150 - 75), height * 0.5);
-            }
-        }
-
-        // --- 遊戲控制與老虎機邏輯 ---
-        let score = 0;
-        const scoreEl = document.getElementById('score');
-        
-        function addScore(points) {
-            score += points;
-            scoreEl.innerText = score;
-        }
-
-        // 老虎機邏輯
-        const reels = ['reel1', 'reel2', 'reel3'];
-        const symbols = ['🍒', '7️⃣', '💎', '🔔', '🍀'];
-        const slotMessage = document.getElementById('slot-message');
-
-        function triggerSlotMachine() {
-            slotMessage.innerText = "SPINNING...";
-            slotMessage.style.color = "#fff";
+        // --- 自定義渲染 (透視魔法) ---
+        // 為了讓它看起來像截圖，我們需要把圓形畫成橢圓形
+        Events.on(render, 'afterRender', function() {
+            const ctx = render.context;
             
-            // 簡單動畫
-            let spinInterval = setInterval(() => {
+            // 1. 畫推板 (Pusher)
+            // 為了立體感，我們畫一個梯形盒子
+            const pPos = pusher.position;
+            const pBottom = pPos.y + pusherHeight/2;
+            
+            // 推板頂部
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, '#8B4513'); // 深銅色
+            gradient.addColorStop(0.5, '#FFD700'); // 金色
+            gradient.addColorStop(1, '#8B4513');
+
+            ctx.fillStyle = gradient;
+            
+            // 繪製推板本身 (看起來像個厚盒子)
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 20;
+            ctx.fillRect(pPos.x - pusherWidth/2, pPos.y - pusherHeight/2, pusherWidth, pusherHeight);
+            ctx.shadowBlur = 0;
+
+            // 畫推板的前端亮條
+            ctx.fillStyle = '#FFF8DC';
+            ctx.fillRect(pPos.x - pusherWidth/2, pBottom - 10, pusherWidth, 10);
+
+            // 2. 畫金幣 (覆蓋原本的 debug 繪圖)
+            const bodies = Composite.allBodies(world);
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            bodies.forEach(body => {
+                if (body.label === 'coin') {
+                    // 儲存狀態
+                    ctx.save();
+                    ctx.translate(body.position.x, body.position.y);
+                    
+                    // 這裡是大絕招：縮放 Y 軸，把圓變成橢圓，製造 3D 透視感
+                    ctx.scale(1, 0.7); 
+
+                    // 金幣本體
+                    const r = body.circleRadius;
+                    
+                    // 金幣漸層
+                    const coinGrad = ctx.createRadialGradient(-r/2, -r/2, 2, 0, 0, r);
+                    coinGrad.addColorStop(0, '#fffacd'); // 亮點
+                    coinGrad.addColorStop(0.5, '#ffd700'); // 金
+                    coinGrad.addColorStop(1, '#b8860b'); // 深金
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, 2 * Math.PI);
+                    ctx.fillStyle = coinGrad;
+                    ctx.fill();
+
+                    // 金幣邊框
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#DAA520';
+                    ctx.stroke();
+
+                    // 金幣上的圖案 (王冠符號)
+                    ctx.fillStyle = 'rgba(184, 134, 11, 0.6)';
+                    ctx.font = "bold 16px Arial";
+                    ctx.fillText("♛", 0, 2);
+
+                    ctx.restore();
+                }
+            });
+            
+            // 3. 畫前景遮罩 (讓金幣看起來是掉進洞裡，而不是直接消失)
+            ctx.fillStyle = 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)';
+        });
+
+        // --- 遊戲控制 ---
+        let score = 0;
+        function addScore(val) {
+            score += val;
+            document.getElementById('score').innerText = score;
+            playTone('coin'); // 播放得分音效
+        }
+
+        // 產生金幣
+        function spawnCoin(x, y) {
+            const coin = Bodies.circle(x, y, 18, { // 金幣半徑 18
+                label: 'coin',
+                restitution: 0.2, // 彈性低
+                friction: 0.001, // 摩擦力極低 (滑動)
+                frictionAir: 0.02, 
+                density: 0.002,
+                render: { visible: false } // 隱藏預設繪圖，我們上面自己畫了
+            });
+            Composite.add(world, coin);
+        }
+
+        // 初始填充金幣
+        function initCoins() {
+            // 隨機散佈一些金幣在推板前方
+            for (let i = 0; i < 40; i++) {
+                const x = (width/2 - 100) + Math.random() * 200;
+                const y = (height/2) + Math.random() * 200;
+                spawnCoin(x, y);
+            }
+        }
+
+        // 點擊投幣 (Drop Coin)
+        const dropBtn = document.getElementById('insert-btn');
+        dropBtn.addEventListener('touchstart', handleDrop, {passive: false});
+        dropBtn.addEventListener('click', handleDrop);
+
+        let isSpinning = false;
+
+        function handleDrop(e) {
+            e.preventDefault(); // 防止雙擊縮放
+            
+            // 視覺回饋
+            dropBtn.classList.add('pressed');
+            setTimeout(() => dropBtn.classList.remove('pressed'), 100);
+            
+            playTone('push');
+
+            // 在推板正前方生成金幣
+            // 計算推板當前位置，讓金幣剛好落在板子前
+            const dropX = (width/2 - 100) + Math.random() * 200; 
+            const dropY = pusher.position.y + pusherHeight/2 + 20; // 剛好在推板前
+            
+            spawnCoin(dropX, dropY);
+
+            // 觸發老虎機 (如果沒有正在轉)
+            if (!isSpinning) {
+                spinSlotMachine();
+            }
+        }
+
+        // --- 老虎機邏輯 ---
+        const reels = ['reel1', 'reel2', 'reel3'];
+        const symbols = ['👑', '💎', '7️⃣', '🍒', '🔔'];
+        const winOverlay = document.getElementById('win-message');
+
+        function spinSlotMachine() {
+            isSpinning = true;
+            winOverlay.style.opacity = '0';
+            
+            let spins = 0;
+            const maxSpins = 20;
+            
+            const interval = setInterval(() => {
                 reels.forEach(id => {
                     document.getElementById(id).innerText = symbols[Math.floor(Math.random() * symbols.length)];
                 });
+                spins++;
+                if (spins >= maxSpins) {
+                    clearInterval(interval);
+                    checkWin();
+                }
             }, 100);
-
-            setTimeout(() => {
-                clearInterval(spinInterval);
-                checkWin();
-            }, 1500);
         }
 
         function checkWin() {
-            // 設定 30% 中獎率
-            const isWin = Math.random() < 0.30; 
-            
-            if (isWin) {
-                // 隨機圖案一致 (視覺效果)
-                const winSymbol = symbols[Math.floor(Math.random() * symbols.length)];
-                reels.forEach(id => document.getElementById(id).innerText = winSymbol);
+            isSpinning = false;
+            // 30% 機率中獎
+            if (Math.random() < 0.3) {
+                // 設定全部相同符號
+                const winSym = symbols[Math.floor(Math.random() * symbols.length)];
+                reels.forEach(id => document.getElementById(id).innerText = winSym);
                 
-                slotMessage.innerText = "BIG WIN!";
-                slotMessage.style.color = "#ff0055";
-                playSound('win');
+                // 顯示中獎特效
+                winOverlay.style.opacity = '1';
+                winOverlay.classList.add('pop-in');
+                playTone('win');
 
-                // 決定獎勵 (20 - 1000)
-                // 使用權重：大部分時候是小獎，偶爾大獎
-                let reward = 20;
-                const r = Math.random();
-                if (r > 0.95) reward = 1000;
-                else if (r > 0.8) reward = 100;
-                else if (r > 0.5) reward = 50;
-                else reward = 20;
-
-                slotMessage.innerText = `WIN: ${reward} COINS!`;
+                // 獎勵：從天而降一堆金幣
+                let rewardCount = Math.floor(Math.random() * 30) + 10; // 10~40 coins
+                let dropCount = 0;
                 
-                // 掉落銀仔
-                // 限制：為了瀏覽器效能，如果數字太大，分批掉落或視覺簡化
-                const actualDrops = Math.min(reward, 100); // 物理上限防卡頓
-                spawnCoin(width / 2, 50, actualDrops);
+                const dropInterval = setInterval(() => {
+                    const x = (width/2 - 50) + Math.random() * 100;
+                    const y = pusher.position.y + pusherHeight/2 + 10;
+                    spawnCoin(x, y);
+                    dropCount++;
+                    if(dropCount >= rewardCount) clearInterval(dropInterval);
+                }, 100);
 
-            } else {
-                slotMessage.innerText = "TRY AGAIN";
-                reels.forEach(id => {
-                    document.getElementById(id).innerText = symbols[Math.floor(Math.random() * symbols.length)];
-                });
             }
         }
 
-        // 按鈕事件
-        document.getElementById('drop-btn').addEventListener('click', (e) => {
-            // 視覺回饋
-            const btn = e.currentTarget;
-            btn.style.transform = "scale(0.95)";
-            setTimeout(() => btn.style.transform = "scale(1)", 100);
-
-            playSound('drop');
-
-            // 從雨刷位置掉落
-            spawnCoin(wiperX, 0, 1);
-            
-            // 啟動老虎機
-            triggerSlotMachine();
-        });
-
         // 啟動
         Render.run(render);
-        Runner.run(Runner.create(), engine);
+        const runner = Runner.create();
+        Runner.run(runner, engine);
         initCoins();
-
-        // 繪製雨刷 (使用 Matter.js 的 afterRender)
-        Events.on(render, 'afterRender', function() {
-            const ctx = render.context;
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
-            ctx.beginPath();
-            ctx.arc(wiperX, 30, 8, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // 畫個小箭頭向下
-            ctx.beginPath();
-            ctx.moveTo(wiperX - 5, 30);
-            ctx.lineTo(wiperX + 5, 30);
-            ctx.lineTo(wiperX, 45);
-            ctx.fill();
-        });
 
     </script>
 </body>
