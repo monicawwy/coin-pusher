@@ -294,7 +294,3 @@ function dropReward(scene, amount, upperWidth, upperFloorBaseY) {
         count++;
     }, 100);
 }
-        
-        count++;
-    }, 80); // 掉落速度
-}
