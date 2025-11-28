@@ -2,13 +2,13 @@ const config = {
     type: Phaser.AUTO,
     parent: 'game-container',
     width: window.innerWidth > 600 ? 600 : window.innerWidth,
-    height: window.innerHeight * 0.75, // 增加高度佔比
-    backgroundColor: '#004d00', // 深綠色背景
+    height: window.innerHeight * 0.75,
+    backgroundColor: '#003300', // 深綠底色
     physics: {
         default: 'matter',
         matter: {
-            gravity: { y: 0.8 }, // 模擬斜坡重力，讓幣慢慢往下滑
-            debug: false // 如果想看物理線條，改成 true
+            gravity: { y: 1 }, // 正向重力
+            debug: false // 開發除錯用，發布時設為 false
         }
     },
     scene: {
@@ -20,20 +20,19 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// 遊戲變數
+// 遊戲物件變數
 let upperPusher;
 let lowerPusher;
 let coins = [];
 let isSpinning = false;
 
 // 參數設定
-const COIN_SIZE = 22; // 銀仔稍大一點更清楚
-const UPPER_WIDTH_PERCENT = 0.55; // 上層寬度佔比
-const PUSHER_RANGE = 50; // 推板移動距離
-const PUSHER_SPEED = 0.03; // 推板速度
+const COIN_SIZE = 24; 
+const PUSHER_SPEED = 0.002; // 推板移動速度頻率
+const PUSHER_AMP = 60; // 推板移動幅度
 
 function preload() {
-    // 不需要外部圖片，使用 Graphics 繪製
+    // 使用程式繪圖，無需外部圖片
 }
 
 function create() {
@@ -41,106 +40,112 @@ function create() {
     const height = this.game.config.height;
     const centerX = width / 2;
 
-    // ==========================================
-    // 1. 定義區域尺寸
-    // ==========================================
-    // 上層區域定義
-    const upperWidth = width * UPPER_WIDTH_PERCENT;
-    const upperLeft = (width - upperWidth) / 2;
-    const upperRight = upperLeft + upperWidth;
-    
-    // 下層推板位置 (在畫面上方一點)
-    const lowerPusherYBase = height * 0.45;
-    // 上層推板位置 (在畫面更上方)
-    const upperPusherYBase = height * 0.15;
+    // 設定世界邊界 (左右有牆，底部開放)
+    this.matter.world.setBounds(0, -1000, width, height + 1000);
 
-    // ==========================================
-    // 2. 建立物理邊界 (World Bounds)
-    // ==========================================
-    this.matter.world.setBounds(0, -200, width, height + 200);
-
-    // ==========================================
-    // 3. 繪製視覺背景 (靜態)
-    // ==========================================
+    // ============================================================
+    // 1. 建立 "靜態地板" (Static Floors) - 銀仔是放在這上面的
+    // ============================================================
     
-    // [視覺] 下層地板 (深綠色)
-    const bgGraphics = this.add.graphics();
-    bgGraphics.fillStyle(0x006400, 1);
-    bgGraphics.fillRect(0, 0, width, height);
-    
-    // [視覺] 上層地板 (稍亮的綠色，帶陰影，營造高度感)
-    const platformGraphics = this.add.graphics();
-    // 陰影
-    platformGraphics.fillStyle(0x000000, 0.5);
-    platformGraphics.fillRect(upperLeft + 10, upperPusherYBase, upperWidth, height * 0.4);
-    // 本體
-    platformGraphics.fillStyle(0x008000, 1);
-    platformGraphics.fillRect(upperLeft, upperPusherYBase, upperWidth, height * 0.4);
-    // 邊框
-    platformGraphics.lineStyle(4, 0xffd700); // 金邊
-    platformGraphics.strokeRect(upperLeft, upperPusherYBase, upperWidth, height * 0.4);
-
-    // ==========================================
-    // 4. 建立物理推板 (Moving Pushers)
-    // ==========================================
-    
-    // --- 下層推板 (Lower Pusher) ---
-    // 這是一個寬的紫色板子，位於上層板子的下方區域
-    lowerPusher = this.matter.add.rectangle(centerX, lowerPusherYBase, width, 80, {
-        isStatic: true, // 我們手動控制位置
-        render: { fillColor: 0x6a0dad } // 鮮豔紫色
+    // --- 上層地板 (窄) ---
+    // 位於畫面上方，負責接住 Slot 掉下來的錢
+    const upperFloorWidth = width * 0.5; 
+    const upperFloorY = height * 0.3;
+    // 建立物理實體 (Static)
+    const upperFloor = this.matter.add.rectangle(centerX, upperFloorY, upperFloorWidth, 400, {
+        isStatic: true,
+        friction: 1, // 高摩擦力，讓錢停住
+        render: { visible: false } // 物理本體隱藏，用 Graphics 畫圖
     });
 
-    // --- 上層推板 (Upper Pusher) ---
-    // 較窄，位於最上方
-    upperPusher = this.matter.add.rectangle(centerX, upperPusherYBase, upperWidth - 10, 60, {
+    // --- 下層地板 (寬) ---
+    // 位於畫面下方，負責接住上層掉下來的錢
+    const lowerFloorY = height * 0.75;
+    // 建立物理實體 (Static)
+    const lowerFloor = this.matter.add.rectangle(centerX, lowerFloorY, width, 500, {
         isStatic: true,
+        friction: 1,
+        render: { visible: false }
+    });
+
+    // ============================================================
+    // 2. 繪製視覺背景 (Visuals) - 為了像截圖
+    // ============================================================
+    
+    // 下層綠色絨布
+    const lowerGraphics = this.add.graphics();
+    lowerGraphics.fillStyle(0x006400, 1); // 賭場綠
+    lowerGraphics.fillRect(0, lowerFloorY - 250, width, 500);
+    
+    // 上層綠色絨布 (帶陰影邊框)
+    const upperGraphics = this.add.graphics();
+    upperGraphics.fillStyle(0x000000, 0.5); // 陰影
+    upperGraphics.fillRect(centerX - upperFloorWidth/2 + 5, upperFloorY - 200 + 5, upperFloorWidth, 400);
+    
+    upperGraphics.fillStyle(0x008000, 1); // 較亮的綠
+    upperGraphics.fillRect(centerX - upperFloorWidth/2, upperFloorY - 200, upperFloorWidth, 400);
+    // 金色邊框
+    upperGraphics.lineStyle(4, 0xffd700);
+    upperGraphics.strokeRect(centerX - upperFloorWidth/2, upperFloorY - 200, upperFloorWidth, 400);
+
+    // ============================================================
+    // 3. 建立 "紫色推板" (Moving Pushers)
+    // ============================================================
+
+    // --- 上層推板 ---
+    // 這是截圖中那個帶箭頭的紫色板子
+    upperPusher = this.matter.add.rectangle(centerX, upperFloorY - 150, upperFloorWidth - 10, 60, {
+        isStatic: true, // 設定為 Static 讓我們手動控制位置 (Kinematic效果)
         render: { fillColor: 0x9932cc } // 亮紫色
     });
 
-    // ==========================================
-    // 5. 建立兩側阻擋 (Side Guards) - 防止上層銀仔掉到兩旁
-    // ==========================================
-    const wallThickness = 20;
-    const wallHeight = height * 0.5;
-    
-    // 左擋板 (隱形或深色，擋住上層兩側)
-    this.matter.add.rectangle(upperLeft - wallThickness/2, upperPusherYBase + 150, wallThickness, wallHeight, {
+    // --- 下層推板 ---
+    // 在下層最後方推動
+    lowerPusher = this.matter.add.rectangle(centerX, lowerFloorY - 200, width, 80, {
         isStatic: true,
-        render: { fillColor: 0x222222 }
-    });
-    // 右擋板
-    this.matter.add.rectangle(upperRight + wallThickness/2, upperPusherYBase + 150, wallThickness, wallHeight, {
-        isStatic: true,
-        render: { fillColor: 0x222222 }
+        render: { fillColor: 0x6a0dad } // 深紫色
     });
 
-    // ==========================================
-    // 6. 初始鋪滿銀仔
-    // ==========================================
-    
-    // 上層鋪滿
-    for (let i = 0; i < 35; i++) {
-        const rx = Phaser.Math.Between(upperLeft + 15, upperRight - 15);
-        const ry = Phaser.Math.Between(upperPusherYBase + 30, upperPusherYBase + 200);
-        spawnCoin(this, rx, ry);
+    // ============================================================
+    // 4. 建立兩側牆壁 (Side Walls) - 防止上層錢掉到虛空
+    // ============================================================
+    const wallThick = 50;
+    // 左牆
+    this.matter.add.rectangle(centerX - upperFloorWidth/2 - wallThick/2, upperFloorY, wallThick, 400, { 
+        isStatic: true, render: { fillColor: 0x111111 } 
+    });
+    // 右牆
+    this.matter.add.rectangle(centerX + upperFloorWidth/2 + wallThick/2, upperFloorY, wallThick, 400, { 
+        isStatic: true, render: { fillColor: 0x111111 } 
+    });
+
+
+    // ============================================================
+    // 5. 初始鋪幣 (Spawning)
+    // ============================================================
+    // 確保銀仔生成在 "地板上方" 一點點的位置
+
+    // 上層初始幣
+    for(let i=0; i<30; i++) {
+        const x = Phaser.Math.Between(centerX - upperFloorWidth/2 + 20, centerX + upperFloorWidth/2 - 20);
+        const y = Phaser.Math.Between(upperFloorY - 100, upperFloorY + 50);
+        spawnCoin(this, x, y);
     }
 
-    // 下層鋪滿 (分佈在下層推板前方)
-    for (let i = 0; i < 50; i++) {
-        const rx = Phaser.Math.Between(20, width - 20);
-        const ry = Phaser.Math.Between(lowerPusherYBase + 50, height - 50);
-        spawnCoin(this, rx, ry);
+    // 下層初始幣
+    for(let i=0; i<50; i++) {
+        const x = Phaser.Math.Between(20, width - 20);
+        const y = Phaser.Math.Between(lowerFloorY - 150, lowerFloorY + 100);
+        spawnCoin(this, x, y);
     }
 
-    // ==========================================
-    // 7. 事件綁定
-    // ==========================================
+    // ============================================================
+    // 6. 事件綁定
+    // ============================================================
     document.getElementById('push-btn').addEventListener('click', () => {
-        handleCoinInsert(this, upperLeft, upperRight, upperPusherYBase);
+        handleCoinInsert(this, upperFloorWidth, upperFloorY);
     });
-
-    // 調整視窗大小
+    
     window.addEventListener('resize', () => {
         this.scale.resize(window.innerWidth > 600 ? 600 : window.innerWidth, window.innerHeight * 0.75);
     });
@@ -149,66 +154,73 @@ function create() {
 let time = 0;
 
 function update() {
-    const height = this.game.config.height;
-    const centerX = this.game.config.width / 2;
-
-    time += PUSHER_SPEED;
-
-    // 計算推板的新 Y 位置 (正弦波移動)
+    time += 1; // 時間計數
     
-    // 1. 上層推板移動
-    // 基礎位置 + 移動範圍 (往復運動)
-    const upperBaseY = height * 0.15;
-    const upperNewY = upperBaseY + Math.sin(time) * 40; 
-    this.matter.body.setPosition(upperPusher, { x: centerX, y: upperNewY });
+    // ============================================================
+    // 推板移動邏輯 (Sine Wave Motion)
+    // ============================================================
+    
+    // 上層推板位置計算
+    // CenterY = height * 0.3 - 150 (Base)
+    // 我們讓它在 Base 前後移動
+    const height = this.game.config.height;
+    const upperBaseY = (height * 0.3) - 120; 
+    // 使用 Sin 波形移動，週期長，移動平滑
+    const upperOffset = Math.sin(time * 0.05) * 40; 
+    this.matter.body.setPosition(upperPusher, { 
+        x: this.game.config.width / 2, 
+        y: upperBaseY + upperOffset 
+    });
 
-    // 2. 下層推板移動
-    // 稍微錯開相位 (time + 1)，讓視覺更有層次
-    const lowerBaseY = height * 0.5; // 下層推板的基礎位置
-    const lowerNewY = lowerBaseY + Math.sin(time + 1) * 50;
-    this.matter.body.setPosition(lowerPusher, { x: centerX, y: lowerNewY });
+    // 下層推板位置計算
+    // 稍微錯開時間 (time + 20)，製造層次感
+    const lowerBaseY = (height * 0.75) - 180;
+    const lowerOffset = Math.sin((time * 0.05) + 1.5) * 50;
+    this.matter.body.setPosition(lowerPusher, { 
+        x: this.game.config.width / 2, 
+        y: lowerBaseY + lowerOffset 
+    });
 
-    // 3. 清除掉出邊界的銀仔
-    coins.forEach((coinContainer, index) => {
-        // 檢查是否掉出螢幕下方
-        if (coinContainer.y > height + 60) {
-            // 這裡以後可以加分
-            coinContainer.destroy();
-            coins.splice(index, 1);
+    // ============================================================
+    // 清除掉落的幣
+    // ============================================================
+    coins.forEach((container, index) => {
+        // 如果掉出螢幕最下方
+        if (container.y > height + 50) {
+            container.destroy(); // 移除物件
+            coins.splice(index, 1); // 移除陣列紀錄
         }
     });
 }
 
-// ==========================================
-// 輔助函式
-// ==========================================
-
+// 生成銀仔
 function spawnCoin(scene, x, y) {
-    // 物理剛體 (圓形)
+    // 物理特性
     const coinBody = scene.matter.add.circle(x, y, COIN_SIZE / 2, {
-        restitution: 0.2, // 彈性低一點，比較像金屬
-        friction: 0.001,  // 摩擦力低，容易滑動
-        frictionAir: 0.02, // 空氣阻力，防止飛太快
-        density: 0.002    // 密度
+        restitution: 0.1, // 彈性很低，像金屬
+        friction: 0.3,    // 摩擦力適中
+        density: 0.01,    // 重量
     });
 
-    // 視覺圖形 (Graphics)
+    // 視覺特性
     const graphics = scene.add.graphics();
-    
-    // 金幣底色
-    graphics.fillStyle(0xFFD700, 1);
+    graphics.fillStyle(0xFFD700, 1); // 金色
     graphics.fillCircle(0, 0, COIN_SIZE / 2);
-    // 金幣內圈
-    graphics.lineStyle(2, 0xDAA520, 1);
-    graphics.strokeCircle(0, 0, COIN_SIZE / 2 - 2);
-    // 閃光點綴
-    graphics.fillStyle(0xFFFFFF, 0.8);
-    graphics.fillCircle(-4, -4, 2);
-
-    // 將圖形放入 Container 並與物理 Body 綁定
-    const container = scene.add.container(x, y, [graphics]);
+    graphics.lineStyle(2, 0xB8860B); // 深金邊框
+    graphics.strokeCircle(0, 0, COIN_SIZE / 2);
     
-    // 每一幀更新 Container 位置跟隨 Body
+    // 錢幣上的 "$" 符號
+    const text = scene.add.text(-6, -9, '$', { 
+        fontSize: '14px', 
+        color: '#8B4513',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+    });
+
+    // 組合視覺物件
+    const container = scene.add.container(x, y, [graphics, text]);
+    
+    // 讓 Container 跟隨 Physics Body
     scene.events.on('update', () => {
         if (container.active && coinBody) {
             container.x = coinBody.position.x;
@@ -216,86 +228,72 @@ function spawnCoin(scene, x, y) {
             container.rotation = coinBody.angle;
         }
     });
-
-    // 綁定 body 到 container (用於銷毀時識別)
-    container.body = coinBody;
     
+    // 標記物件以便刪除
+    container.body = coinBody;
     coins.push(container);
-    return coinBody;
 }
 
-function handleCoinInsert(scene, leftBound, rightBound, topY) {
+// 按鈕事件處理
+function handleCoinInsert(scene, upperWidth, upperFloorBaseY) {
     if (isSpinning) return;
 
-    // 1. 發射銀仔：從上層推板「最裡面」的位置發出
-    // 隨機稍微偏左或偏右，模擬真實掉落
-    const spawnX = Phaser.Math.Between(leftBound + 20, rightBound - 20);
-    // 發射點在推板上方，讓它掉下來被推
-    const spawnY = topY - 50; 
+    const centerX = scene.game.config.width / 2;
+    
+    // 投幣位置：在上層推板的 "後方/上方"，讓推板把它推下來
+    // 範圍：上層地板寬度內
+    const spawnX = Phaser.Math.Between(centerX - upperWidth/2 + 30, centerX + upperWidth/2 - 30);
+    
+    // 高度：從上面掉下來，落在推板前方
+    const spawnY = upperFloorBaseY - 200;
 
     spawnCoin(scene, spawnX, spawnY);
-
-    // 2. 啟動 Slot
-    runSlotMachine(scene, leftBound, rightBound);
+    runSlotMachine(scene, upperWidth, upperFloorBaseY);
 }
 
-function runSlotMachine(scene, leftBound, rightBound) {
+// 老虎機邏輯 (保持不變，稍微調整掉落位置)
+function runSlotMachine(scene, upperWidth, upperFloorBaseY) {
     isSpinning = true;
     const reels = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
-    const winAmountDisplay = document.getElementById('win-amount');
+    const winDisplay = document.getElementById('win-amount');
     
-    reels.forEach(r => {
-        r.innerText = '🌀';
-        r.classList.add('spinning');
-    });
+    reels.forEach(r => { r.innerText = '🌀'; r.classList.add('spinning'); });
 
     setTimeout(() => {
         reels.forEach(r => r.classList.remove('spinning'));
-        
-        // 30% 中獎率
         const isWin = Math.random() < 0.3; 
         
         if (isWin) {
             const rand = Math.random();
-            let reward = 0;
-            let icon = '';
-
-            if (rand > 0.9) { reward = 500; icon = '💎'; }
+            let reward = 0; let icon = '';
+            if (rand > 0.9) { reward = 300; icon = '💎'; }
             else if (rand > 0.6) { reward = 100; icon = '7️⃣'; }
             else { reward = 20; icon = '🍒'; }
 
             reels.forEach(r => r.innerText = icon);
-            winAmountDisplay.innerText = reward;
-            
-            // 掉落獎勵
-            dropRewardCoins(scene, reward, leftBound, rightBound);
-
+            winDisplay.innerText = reward;
+            dropReward(scene, reward, upperWidth, upperFloorBaseY);
         } else {
-            reels[0].innerText = '🍋';
-            reels[1].innerText = '🍇';
-            reels[2].innerText = '🔔';
-            winAmountDisplay.innerText = '0';
+            reels[0].innerText = '🍋'; reels[1].innerText = '🍇'; reels[2].innerText = '🔔';
+            winDisplay.innerText = '0';
         }
-        
         isSpinning = false;
     }, 1000);
 }
 
-function dropRewardCoins(scene, amount, leftBound, rightBound) {
+function dropReward(scene, amount, upperWidth, upperFloorBaseY) {
     let count = 0;
-    // 手機效能優化：若中大獎，顯示數字增加，但實際掉落物理銀仔上限設為 50
-    const physicalLimit = 50; 
-    const dropCount = amount > physicalLimit ? physicalLimit : amount;
+    const maxDrop = amount > 40 ? 40 : amount; // 限制數量防止卡頓
+    const centerX = scene.game.config.width / 2;
 
     const interval = setInterval(() => {
-        if (count >= dropCount) {
-            clearInterval(interval);
-            return;
-        }
+        if (count >= maxDrop) { clearInterval(interval); return; }
         
-        // 獎勵銀仔也從上層內部掉落
-        const spawnX = Phaser.Math.Between(leftBound + 30, rightBound - 30);
-        spawnCoin(scene, spawnX, 50); // 從頂部掉下
+        const x = Phaser.Math.Between(centerX - upperWidth/2 + 40, centerX + upperWidth/2 - 40);
+        spawnCoin(scene, x, upperFloorBaseY - 200);
+        count++;
+    }, 100);
+}
         
         count++;
     }, 80); // 掉落速度
