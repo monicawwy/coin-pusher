@@ -1,140 +1,130 @@
 :root {
-    --gold: #ffd700;
-    --purple-dark: #2e002e;
-    --purple-light: #580058;
+    --primary-gold: #ffd700;
+    --casino-red: #8b0000;
+    --purple-felt: #4b0082;
+    --neon-glow: 0 0 10px #ffd700, 0 0 20px #ff8c00;
 }
 
 body {
     margin: 0;
-    overflow: hidden;
-    background: #000;
-    font-family: 'Arial Black', sans-serif;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+    background-color: #1a0520; /* 深紫色背景 */
+    color: white;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden; /* 禁止捲動 */
+    touch-action: none;
 }
 
-/* 1. 全局背景：深紫賭場風 */
-.casino-bg {
-    position: absolute;
-    width: 100%; height: 100%;
-    background: radial-gradient(circle at center, var(--purple-light), var(--purple-dark), #000);
-    z-index: -1;
-}
-
-/* 2. 老虎機 UI */
-.slot-machine-ui {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    height: 25%;
-    background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(to bottom, #4a0e4e, #000);
-    border-bottom: 4px solid var(--gold);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+#app-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    height: 100vh;
+    width: 100%;
+    max-width: 600px; /* 手機版面限制 */
+    margin: 0 auto;
+    background-image: linear-gradient(to bottom, #2c0a35, #110011);
+    border-left: 2px solid var(--primary-gold);
+    border-right: 2px solid var(--primary-gold);
+}
+
+/* 老虎機樣式 */
+.slot-machine-container {
+    flex: 0 0 20%;
+    background: url('https://www.transparenttextures.com/patterns/black-scales.png'), linear-gradient(to bottom, #d4af37, #8a6e0f);
+    padding: 10px;
+    display: flex;
     justify-content: center;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     z-index: 10;
 }
 
-.jackpot-display {
-    text-align: center;
-    margin-bottom: 5px;
-}
-.jackpot-display span {
-    color: #fff; font-size: 10px; letter-spacing: 2px;
-}
-#jackpot-val {
-    color: var(--gold); font-size: 24px; text-shadow: 0 0 10px var(--gold);
-}
-
-.slot-reels {
-    position: relative;
-    width: 240px;
-}
-.reel-window {
-    display: flex;
-    justify-content: space-between;
-    background: #fff;
+.slot-frame {
+    background: #000;
+    border: 4px solid #ffd700;
     border-radius: 10px;
     padding: 5px;
-    box-shadow: inset 0 0 10px #000;
+    width: 90%;
+    position: relative;
+    text-align: center;
 }
-.reel {
-    width: 70px; height: 60px;
-    font-size: 32px;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(to bottom, #eee, #fff, #eee);
+
+.reels {
+    display: flex;
+    justify-content: space-around;
+    background: white;
+    font-size: 2rem;
+    height: 50px;
+    align-items: center;
     border-radius: 5px;
-}
-#win-msg {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 36px;
-    color: #ff0055;
-    text-shadow: 2px 2px 0 #fff;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
+    overflow: hidden;
 }
 
-/* 3. 遊戲區 */
+.reel {
+    width: 33%;
+    text-align: center;
+}
+
+.jackpot-display {
+    margin-top: 5px;
+    color: #ffd700;
+    font-weight: bold;
+    text-shadow: 1px 1px 0 #000;
+}
+
+/* 遊戲畫布樣式 */
 #game-container {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 5;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #006400; /* 綠色絨布底 */
 }
 
-/* 4. 底部控制欄 */
-.controls-bar {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 120px;
-    background: linear-gradient(to top, #111, #330000);
+/* 控制按鈕樣式 */
+.controls-area {
+    flex: 0 0 15%;
+    background: #222;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    border-top: 2px solid var(--gold);
-    z-index: 20;
-    padding-bottom: 20px; /* iOS Safe Area */
-}
-
-.coin-info {
-    display: flex;
     align-items: center;
-    color: var(--gold);
-    font-size: 20px;
-    margin-bottom: 10px;
-    background: rgba(0,0,0,0.5);
-    padding: 5px 15px;
-    border-radius: 20px;
-    border: 1px solid var(--gold);
+    border-top: 3px solid var(--primary-gold);
 }
 
-.poker-chip-btn {
-    width: 80px; height: 80px;
+.push-button {
+    background: radial-gradient(circle, #ff4500, #8b0000);
+    border: 4px solid #ffd700;
     border-radius: 50%;
-    border: none;
-    background: repeating-conic-gradient(#d32f2f 0deg 30deg, #fff 30deg 60deg);
-    padding: 5px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    width: 90px;
+    height: 90px;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
     cursor: pointer;
+    box-shadow: 0 5px 0 #500000, 0 10px 10px rgba(0,0,0,0.5);
+    position: relative;
+    outline: none;
     transition: transform 0.1s;
 }
 
-.poker-chip-btn:active { transform: scale(0.9); }
-.poker-chip-btn.clicked { transform: scale(0.95); }
+.push-button:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #500000, 0 2px 2px rgba(0,0,0,0.5);
+}
 
-.chip-inner {
-    width: 100%; height: 100%;
-    background: #d32f2f;
+.btn-shine {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    border: 4px dashed #fff;
-    color: #fff;
-    font-weight: bold;
+    box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+}
+
+/* 動畫類別 */
+.spinning {
+    animation: blurText 0.1s infinite;
+}
+
+@keyframes blurText {
+    0% { filter: blur(0px); }
+    50% { filter: blur(2px); }
+    100% { filter: blur(0px); }
 }
